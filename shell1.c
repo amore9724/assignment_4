@@ -50,11 +50,15 @@ int main(int argc, char *argv[]) {
     //raise(SIGSTOP); // Comment if unneeded, this is for debugging purposes.
     char buf[MAXLINE];
     char *args[MAXARGS];
-    size_t pageSize = sysconf(_SC_PAGESIZE);
-    size_t size = pageSize * 2;
-    size_t region_size = MNAME*sizeof(NameCountData);
+    size_t size = MSIZE * sizeof(NameCountData); // Size of global memory.
+    size_t region_size = MNAME * sizeof(NameCountData); // Size of each child region of memory.
+    void *GLOBAL = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                        MAP_SHARED | MAP_ANONYMOUS,
+                        -1, 0); // Actually maps the memory in question.
 
-    void *GLOBAL = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    if (GLOBAL == MAP_FAILED) {
+        perror("mmap error");
+    }
 
     printf("%% "); /* print prompt (printf requires %% to print %) */
     char *nused[MAXLINE] = {0};
@@ -62,7 +66,7 @@ int main(int argc, char *argv[]) {
     int nused_count = 0;
     while (fgets(buf, MAXLINE, stdin) != NULL) {
         // Read argument from stdin.
-        memset(nused, 0, sizeof(nused));    /* Fills nused and count with 0s once loop restarts. */
+        memset(nused, 0, sizeof(nused)); /* Fills nused and count with 0s once loop restarts. */
         memset(count, 0, sizeof(count));
         nused_count = 0;
         if (buf[strlen(buf) - 1] == '\n')
@@ -91,8 +95,9 @@ int main(int argc, char *argv[]) {
             if (pid == 0) // Child process.
             {
                 int child_id = getpid() - parent_pid;
-                NameCountData *child_region = (NameCountData*)((char*)GLOBAL + child_id * region_size);
-                char *child_argv[] = {args[0], args[j], NULL}; // Creates arguments to pass to execvp for child process to execute.
+                NameCountData *child_region = (NameCountData *) ((char *) GLOBAL + child_id * region_size);
+                char *child_argv[] = {args[0], args[j], NULL};
+                // Creates arguments to pass to execvp for child process to execute.
                 execvp(child_argv[0], child_argv); // Execute countnames.c
 
                 /* The child process should not get here, if it did, then something is wrong. */
@@ -103,7 +108,6 @@ int main(int argc, char *argv[]) {
         }
         // This is for the parent program to read the data sent to it through the pipe.
         for (int j = 1; j < i; j++) {
-
         }
 
         /* Parent waits until all children are finished */
@@ -118,6 +122,6 @@ int main(int argc, char *argv[]) {
     for (int i = 0; nused[i] != 0; i++) {
         free(nused[i]); // Frees memory which was allocated when reading from pipe.
     }
-    munmap(GLOBAL, size);
+    munmap(GLOBAL, MLINE * sizeof(NameCountData)); // Unmaps mapped memory.
     exit(0);
 }

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/mman.h>
 #ifndef _A3_H_
 #define _A3_H_
 #define MSIZE 10001 // Maximum number of lines in the program(empty or non empty)
@@ -10,6 +11,7 @@
 #define MAXLINE 4096    // This is the maximum amount of lines that will be read.
 #define PROGRAMNAME "countnames"    // This is the name of the program to be executed.
 #define MAXARGS 100  // Maximum number of arguments
+#define output_path "output"
 
 typedef struct {
     char name[31];

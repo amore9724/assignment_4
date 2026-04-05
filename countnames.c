@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) /* int argc = argument count
 
 {
     char filename[64];
-    sprintf(filename, "output/%d.out", getpid());
+    sprintf(filename, "%s/%d.out", output_path, getpid());
 
     /* Create a PID.out for this child process
     and then set stdout to this PID.out */
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) /* int argc = argument count
     and then set stderr to this PID.err */
 
     char fileerr[64];
-    sprintf(fileerr, "output/%d.err", getpid());
+    sprintf(fileerr, "%s/%d.err", output_path, getpid());
 
     if (freopen(fileerr, "w", stderr) == NULL) {
         perror("freopen failed");
