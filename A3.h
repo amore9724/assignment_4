@@ -14,17 +14,17 @@
 typedef struct {
     char name[31];
     int count;
-} NameCountData;    // Contains the name and the amount of time it appears in a file.
+} NameCountData; // Contains the name and the amount of time it appears in a file.
 
 typedef enum {
     TYPE_NAMECOUNT,
-    TYPE_B          // This enum may be extended with other types in the future.
+    TYPE_B // This enum may be extended with other types in the future.
 } MessageType;
 
 typedef struct {
     MessageType type;
-    size_t size;    // Size of the following payload
-} MessageHeader;    // Message to be sent through pipes.
+    size_t size; // Size of the following payload
+} MessageHeader; // Message to be sent through pipes.
 
 int check_in(char *a, char *b[]); // Checks if a string is in the file.
 void nprinter(char *nused[], int count[]); // Prints a string and the amount of times it occurs.
