@@ -18,12 +18,13 @@ int main(int argc, char *argv[]) {
     if (mem_fd == -1) {
         perror("shm_open error");
     }
+    size_t global_size = MSIZE * sizeof(NameCountData);
 
-    if (ftruncate(mem_fd, size) == -1) {
+    if (ftruncate(mem_fd, global_size) == -1) {
         perror("ftruncate error");
     }
 
-    void *GLOBAL = mmap(NULL, size, PROT_READ | PROT_WRITE,
+    void *GLOBAL = mmap(NULL, global_size, PROT_READ | PROT_WRITE,
                         MAP_SHARED | MAP_ANONYMOUS,
                         -1, 0); // Actually maps the memory in question.
 
@@ -100,7 +101,7 @@ int main(int argc, char *argv[]) {
         while (wait(NULL) > 0) {
         }
         NameCountData *total = GLOBAL;
-        for (int j = 1; j < i; j++) {
+        for (int j = 0; j < i; j++) {
             NameCountData temp = total[j];
             int index = check_in(temp.name, nused);
             if (index == -1) {
@@ -118,6 +119,6 @@ int main(int argc, char *argv[]) {
     for (int i = 0; nused[i] != 0; i++) {
         free(nused[i]); // Frees memory which was allocated when reading from pipe.
     }
-    munmap(GLOBAL, MLINE * sizeof(NameCountData)); // Unmaps mapped memory.
+    munmap(GLOBAL, global_size); // Unmaps mapped memory.
     exit(0);
 }

@@ -22,6 +22,7 @@ int main(int argc, char *argv[]) /* int argc = argument count
         perror("freopen failed");
         return 1;
     }
+    size_t region_size = MNAME * sizeof(NameCountData);
 
     /* Create a PID.err for this child process
     and then set stderr to this PID.err */
@@ -47,9 +48,11 @@ int main(int argc, char *argv[]) /* int argc = argument count
 
     if (argv[2] == NULL) {      // No specified mem_fd.
         perror("No mem_fd specified.");
+        return 1;
     }
     if (argv[3] == NULL) {      // Parent PID not specified.
         perror("Parent PID not specified.");
+        return 1;
     }
 
     int mem_fd = atoi(argv[2]);
