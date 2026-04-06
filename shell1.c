@@ -9,42 +9,6 @@
 *   This repository can be made available upon request.
 */
 
-void read_from_pipe(int fd, char **arr, int *pos, int *count) {
-    /* This function reads the data from the pipe.
-                               Position is passed as pointer in order for function to know where the position is.*/
-    MessageHeader header;
-    while (read(fd, &header, sizeof(header)) > 0) {
-        // Reads from the message header sent by child process.
-        switch (header.type) {
-            // This switches based on what the header type is.
-
-            case TYPE_NAMECOUNT: {
-                NameCountData dataNC; // Initializes struct to be used when reading data from pipe.
-                read(fd, &dataNC, sizeof(NameCountData)); // Reads the data.
-                int i;
-                if ((i = check_in(dataNC.name, arr)) != -1) {
-                    count[i] += dataNC.count; // This adds the count to the name if the name is already there.
-                } else {
-                    arr[*pos] = strdup(dataNC.name); // This adds a name to the array.
-                    count[*pos] = dataNC.count; // This sets the count to the name in the array.
-                    (*pos)++; // This moves the position to the next slot.
-                }
-                break;
-            }
-
-            // This case is for a possible extension in future to process other Struct data
-            case TYPE_B: {
-                break;
-            }
-
-            // Handle unknown type error
-            default:
-
-                fprintf(stderr, "Unknown message type received: %d\\n", header.type);
-        }
-    }
-}
-
 
 int main(int argc, char *argv[]) {
     //raise(SIGSTOP); // Comment if unneeded, this is for debugging purposes.

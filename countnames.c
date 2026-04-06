@@ -8,15 +8,6 @@
  *   This repository can be made available upon request.
  */
 
-void write_struct_namecount(int fd, NameCountData *data) {
-    MessageHeader header;
-    header.type = TYPE_NAMECOUNT;
-    header.size = sizeof(NameCountData);
-
-    write(fd, &header, sizeof(header)); // Write the header
-    write(fd, data, sizeof(NameCountData)); // Write the payload (name counts)
-}
-
 int main(int argc, char *argv[]) /* int argc = argument count
                                   * char *argv[] = string array containing the actual arguments passed.*/
 
