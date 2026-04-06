@@ -17,8 +17,8 @@ If you want to test countnames, copy and paste this to the terminal to test ever
 
 # Lessons Learned:
 
-TODO
+Learned how to use "sprintf" to print a string into an allocated block of memory.
 
 # Acknowledgments
 
-TODO
+https://stackoverflow.com/questions/190229/where-is-the-itoa-function-in-linux

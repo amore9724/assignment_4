@@ -3,8 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#ifndef _A3_H_
-#define _A3_H_
+#include <fcntl.h>
+#ifndef COUNTNAMES_H_
+#define COUNTNAMES_H_
 #define MSIZE 10001 // Maximum number of lines in the program(empty or non empty)
 #define MNAME 101   // Maximum number of names.
 #define MLINE 31    // Maximum number of characters in a line.

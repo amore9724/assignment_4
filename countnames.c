@@ -1,6 +1,6 @@
 #include <sys/types.h>
 #include <unistd.h>
-#include "A3.h"
+#include "countnames.h"
 
 
 /*
@@ -54,6 +54,11 @@ int main(int argc, char *argv[]) /* int argc = argument count
         return 1;
     }
 
+    if (argv[2] == NULL) {      // No specified offset.
+        perror("No offset specified.");
+    }
+
+    int mem_addr = atoi(argv[2]);
     int i = 0, lnum = 0;
     char namebuf[MLINE] = {0}; // This buffer temporarily stores a line in the file.
     char *names[MSIZE] = {0}; // This stores all the names and their occurences in the file.
@@ -78,9 +83,9 @@ int main(int argc, char *argv[]) /* int argc = argument count
         NameCountData ncd; // Initializes NameCountData struct to send to parent.
         strcpy(ncd.name, nused[i]); // Copies the current name into the communication header.
         ncd.count = count[i]; // Sets the count of the current name to be set.
-        write_struct_namecount(STDOUT_FILENO, &ncd); // Sends the name count to parent.
+        memcpy();
+        //write_struct_namecount(STDOUT_FILENO, &ncd); // Sends the name count to parent.
     }
-
     fflush(stdout); // Flushes stdout to prevent further issues.
     clnup(names, nused); // This will free the allocated memory.
     return 0;

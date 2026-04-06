@@ -1,4 +1,4 @@
-#include "A3.h"
+#include "countnames.h"
 
 int check_in(char *a, char *b[]) {
     // Checks if a string is in the file.

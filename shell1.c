@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/mman.h>
-#include "A3.h"
+#include "countnames.h"
 
 /*
 *   NOTE: A history of this code is available on a GitHub repository.
@@ -50,8 +50,19 @@ int main(int argc, char *argv[]) {
     //raise(SIGSTOP); // Comment if unneeded, this is for debugging purposes.
     char buf[MAXLINE];
     char *args[MAXARGS];
+    int mem_fd = shm_open("/shared_memory_i", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    if (mem_fd == -1) {
+        perror("shm_open error");
+    }
+
     size_t size = MSIZE * sizeof(NameCountData); // Size of global memory.
+
+    if (ftruncate(mem_fd, size) == -1) {
+        perror("ftruncate error");
+    }
+
     size_t region_size = MNAME * sizeof(NameCountData); // Size of each child region of memory.
+
     void *GLOBAL = mmap(NULL, size, PROT_READ | PROT_WRITE,
                         MAP_SHARED | MAP_ANONYMOUS,
                         -1, 0); // Actually maps the memory in question.
@@ -61,6 +72,7 @@ int main(int argc, char *argv[]) {
     }
 
     printf("%% "); /* print prompt (printf requires %% to print %) */
+
     char *nused[MAXLINE] = {0};
     int count[MAXLINE] = {0};
     int nused_count = 0;
@@ -87,17 +99,36 @@ int main(int argc, char *argv[]) {
         /* Set up the arrays to be used later by the program */
 
         // For each input file, fork and exec the countnames program with the file as the argument.
-        int parent_pid = getpid();
+
+        // int parent_pid = getpid();
+
         for (int j = 1; j < i; j++) {
             // Loop where all processes are forked.
             pid_t pid = fork(); // Create new process for each file.
 
             if (pid == 0) // Child process.
             {
-                int child_id = getpid() - parent_pid;
-                NameCountData *child_region = (NameCountData *) ((char *) GLOBAL + child_id * region_size);
-                char *child_argv[] = {args[0], args[j], NULL};
-                // Creates arguments to pass to execvp for child process to execute.
+                /* USE ONLY IF THIS METHOD FAILS */
+                // int child_id = getpid() - parent_pid;
+                // NameCountData *child_region = (NameCountData *) ((char *) GLOBAL + child_id * region_size);
+
+                mem_fd = shm_open("/shared_memory_i", O_RDWR, 0);
+                if (mem_fd == -1) {
+                    perror("shm_open error");
+                }
+
+                if (fcntl(mem_fd, F_SETFD, FD_CLOEXEC, 0) == -1) {
+                    perror("fcntl error");
+                }
+
+                void* child_mem = mmap(NULL, region_size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, 0);
+                if (child_mem == MAP_FAILED) {
+                    perror("mmap error");
+                }
+
+                char tempbuf[25];
+                sprintf(tempbuf, "%d", mem_fd);
+                char *child_argv[] = {args[0], args[j], tempbuf, NULL}; // Creates arguments to pass to execvp for child process to execute.
                 execvp(child_argv[0], child_argv); // Execute countnames.c
 
                 /* The child process should not get here, if it did, then something is wrong. */
