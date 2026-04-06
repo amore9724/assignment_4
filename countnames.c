@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) /* int argc = argument count
         perror("freopen failed");
         return 1;
     }
-    size_t region_size = MNAME * sizeof(NameCountData);
+    size_t global_size = MSIZE * sizeof(NameCountData);
 
     /* Create a PID.err for this child process
     and then set stderr to this PID.err */
@@ -46,23 +46,6 @@ int main(int argc, char *argv[]) /* int argc = argument count
         return 1;
     }
 
-    if (argv[2] == NULL) {      // No specified mem_fd.
-        perror("No mem_fd specified.");
-        return 1;
-    }
-    if (argv[3] == NULL) {      // Parent PID not specified.
-        perror("Parent PID not specified.");
-        return 1;
-    }
-
-    int mem_fd = atoi(argv[2]);
-    int parent_pid = atoi(argv[3]);
-    int offset = getpid() - parent_pid;
-    void* child_mem = mmap(NULL, region_size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, 0);
-    if (child_mem == MAP_FAILED) {
-        perror("mmap error");
-    }
-    NameCountData *space = (NameCountData*) child_mem + offset*region_size; // Compute address where space will be written.
     int i = 0, lnum = 0;
     char namebuf[MLINE] = {0}; // This buffer temporarily stores a line in the file.
     char *names[MSIZE] = {0}; // This stores all the names and their occurences in the file.
@@ -80,6 +63,21 @@ int main(int argc, char *argv[]) /* int argc = argument count
     int count[MNAME] = {0}; // Contains the number of times a name occurs in the file.
     char *nused[MNAME] = {0}; // Contains the number of unique names used in the file.
     ncount(names, nused, count); // Counts the names used and sends it to the arrays.
+    int mem_fd = mem_fd = shm_open("/shared_memory_i", O_RDWR, 0); // Open memory area in child process
+    if (mem_fd == -1) {
+        perror("shm_open error");
+    }
+
+
+    if (argv[2] == NULL) {
+        perror("slot missing");
+    }
+    int slot = atoi(argv[2]);
+    void* child_mem = mmap(NULL, global_size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, 0);
+    if (child_mem == MAP_FAILED) {
+        perror("mmap error");
+    }
+    NameCountData *space = (NameCountData*) child_mem + slot*MNAME; // Compute address where space will be written.
     for (i = 0; nused[i] != 0; i++) {
         // Sends data to parent
         NameCountData ncd; // Initializes NameCountData struct to send to parent.
