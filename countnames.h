@@ -14,6 +14,7 @@
 #define MAXARGS 100  // Maximum number of arguments
 #define output_path "output"
 
+
 typedef struct {
     char name[31];
     int count;
@@ -29,7 +30,10 @@ typedef struct {
     size_t size; // Size of the following payload
 } MessageHeader; // Message to be sent through pipes.
 
-int check_in(char *a, char *b[]); // Checks if a string is in the file.
+const size_t size = MSIZE * sizeof(NameCountData); // Size of global memory.
+const size_t region_size = MNAME * sizeof(NameCountData); // Size of each child region of memory.
+
+int check_in(char *a, char *b[]); // Checks if a string is in the file. Returns -1 if not.
 void nprinter(char *nused[], int count[]); // Prints a string and the amount of times it occurs.
 void clnup(char *a1[], char *a2[]); // Frees allocated memory.
 void ncount(char *arr[], char *nused[], int count[]); // Counts the number of times a string occurs in a file.

@@ -54,11 +54,21 @@ int main(int argc, char *argv[]) /* int argc = argument count
         return 1;
     }
 
-    if (argv[2] == NULL) {      // No specified offset.
-        perror("No offset specified.");
+    if (argv[2] == NULL) {      // No specified mem_fd.
+        perror("No mem_fd specified.");
+    }
+    if (argv[3] == NULL) {      // Parent PID not specified.
+        perror("Parent PID not specified.");
     }
 
-    int mem_addr = atoi(argv[2]);
+    int mem_fd = atoi(argv[2]);
+    int parent_pid = atoi(argv[3]);
+    int offset = getpid() - parent_pid;
+    void* child_mem = mmap(NULL, region_size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, 0);
+    if (child_mem == MAP_FAILED) {
+        perror("mmap error");
+    }
+    NameCountData *space = (NameCountData*) child_mem + offset*region_size; // Compute address where space will be written.
     int i = 0, lnum = 0;
     char namebuf[MLINE] = {0}; // This buffer temporarily stores a line in the file.
     char *names[MSIZE] = {0}; // This stores all the names and their occurences in the file.
@@ -72,9 +82,7 @@ int main(int argc, char *argv[]) /* int argc = argument count
         names[i++] = strdup(tok); /* This allocates memory on the heap to store the string,
                                       which needs to be freed later. */
     }
-
     fclose(f);
-
     int count[MNAME] = {0}; // Contains the number of times a name occurs in the file.
     char *nused[MNAME] = {0}; // Contains the number of unique names used in the file.
     ncount(names, nused, count); // Counts the names used and sends it to the arrays.
@@ -83,10 +91,10 @@ int main(int argc, char *argv[]) /* int argc = argument count
         NameCountData ncd; // Initializes NameCountData struct to send to parent.
         strcpy(ncd.name, nused[i]); // Copies the current name into the communication header.
         ncd.count = count[i]; // Sets the count of the current name to be set.
-        memcpy();
+        memcpy(&space[i], &ncd, sizeof(NameCountData));
         //write_struct_namecount(STDOUT_FILENO, &ncd); // Sends the name count to parent.
     }
     fflush(stdout); // Flushes stdout to prevent further issues.
-    clnup(names, nused); // This will free the allocated memory.
+    clnup(names, nused); // This will free the allocated memory
     return 0;
 }

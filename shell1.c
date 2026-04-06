@@ -55,13 +55,9 @@ int main(int argc, char *argv[]) {
         perror("shm_open error");
     }
 
-    size_t size = MSIZE * sizeof(NameCountData); // Size of global memory.
-
     if (ftruncate(mem_fd, size) == -1) {
         perror("ftruncate error");
     }
-
-    size_t region_size = MNAME * sizeof(NameCountData); // Size of each child region of memory.
 
     void *GLOBAL = mmap(NULL, size, PROT_READ | PROT_WRITE,
                         MAP_SHARED | MAP_ANONYMOUS,
@@ -100,7 +96,7 @@ int main(int argc, char *argv[]) {
 
         // For each input file, fork and exec the countnames program with the file as the argument.
 
-        // int parent_pid = getpid();
+        int parent_pid = getpid();
 
         for (int j = 1; j < i; j++) {
             // Loop where all processes are forked.
@@ -112,23 +108,20 @@ int main(int argc, char *argv[]) {
                 // int child_id = getpid() - parent_pid;
                 // NameCountData *child_region = (NameCountData *) ((char *) GLOBAL + child_id * region_size);
 
-                mem_fd = shm_open("/shared_memory_i", O_RDWR, 0);
+                mem_fd = shm_open("/shared_memory_i", O_RDWR, 0); // Open memory area in child process
                 if (mem_fd == -1) {
                     perror("shm_open error");
                 }
 
-                if (fcntl(mem_fd, F_SETFD, FD_CLOEXEC, 0) == -1) {
+                if (fcntl(mem_fd, F_SETFD, FD_CLOEXEC, 0) == -1) {  // Clear FD_CLOEXEC flag
                     perror("fcntl error");
                 }
 
-                void* child_mem = mmap(NULL, region_size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, 0);
-                if (child_mem == MAP_FAILED) {
-                    perror("mmap error");
-                }
-
                 char tempbuf[25];
+                char tempbuf2[25];
                 sprintf(tempbuf, "%d", mem_fd);
-                char *child_argv[] = {args[0], args[j], tempbuf, NULL}; // Creates arguments to pass to execvp for child process to execute.
+                sprintf(tempbuf2, "%d", parent_pid);
+                char *child_argv[] = {args[0], args[j], tempbuf, tempbuf2, NULL}; // Creates arguments to pass to execvp for child process to execute.
                 execvp(child_argv[0], child_argv); // Execute countnames.c
 
                 /* The child process should not get here, if it did, then something is wrong. */
@@ -137,13 +130,21 @@ int main(int argc, char *argv[]) {
                 exit(1);
             }
         }
-        // This is for the parent program to read the data sent to it through the pipe.
-        for (int j = 1; j < i; j++) {
-        }
 
         /* Parent waits until all children are finished */
 
         while (wait(NULL) > 0) {
+        }
+        NameCountData *total = GLOBAL;
+        for (int j = 1; j < i; j++) {
+            NameCountData temp = total[j];
+            int index = check_in(temp.name, nused);
+            if (index == -1) {
+                nused[nused_count++] = strdup(temp.name);
+                count[j] = temp.count;
+            } else {
+                count[index] += temp.count;
+            }
         }
         nprinter(nused, count); // Prints the names to output.
         fflush(stdout);

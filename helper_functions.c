@@ -1,7 +1,7 @@
 #include "countnames.h"
 
 int check_in(char *a, char *b[]) {
-    // Checks if a string is in the file.
+    // Checks if a string is in char *b[]. Returns -1 if not.
     int rval = -1;
     for (int i = 0; b[i] != 0; i++) {
         if (strcmp(b[i], a) == 0) {
