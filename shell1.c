@@ -13,25 +13,25 @@ void *GLOBAL = NULL;
 int mem_fd = -1;
 size_t global_size = 0;
 
-void handle_sigint(int sig) {
-    if (GLOBAL) munmap(GLOBAL, global_size);
-    if (mem_fd != -1) close(mem_fd);
-    shm_unlink("/shared_memory_i");
-    _exit(0);
+void handle_sigint(int sig) {   // Cleans up if CTRL+C is called.
+    if (GLOBAL) munmap(GLOBAL, global_size);    // If memory is mapped, then unmap.
+    if (mem_fd != -1) close(mem_fd);    // If mem_fd has been assigned, then close it.
+    shm_unlink(SHARED_MEMORY_NAME);     // Unlink mapped memory.
+    _exit(0);   // Everything that needs to be cleaned up has been cleaned up, so this variant is used.
 }
 
 int main(int argc, char *argv[]) {
     //raise(SIGSTOP); // Comment if unneeded, this is for debugging purposes.
-    signal(SIGINT, handle_sigint);
-    mkdir("output", 0755);
+    signal(SIGINT, handle_sigint);  // Signal handler.
+    mkdir("output", 0755);  // Creates output directory if it doesn't already exist.
     char buf[MAXLINE];
     char *args[MAXARGS];
-    mem_fd = shm_open(SHARED_MEMORY_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    mem_fd = shm_open(SHARED_MEMORY_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR); // Open memory object to be used.
     if (mem_fd == -1) {
         perror("shm_open error");
     }
 
-    global_size = MSIZE * sizeof(NameCountData);
+    global_size = MSIZE * sizeof(NameCountData);    // Initialize size of memory object.
 
     if (ftruncate(mem_fd, global_size) == -1) {
         perror("ftruncate error");
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 
     GLOBAL = mmap(NULL, global_size, PROT_READ | PROT_WRITE,
                         MAP_SHARED,
-                        mem_fd, 0); // Actually maps the memory in question.
+                        mem_fd, 0); // Actually maps the memory object in question to memory.
 
     if (GLOBAL == MAP_FAILED) {
         perror("mmap error");
@@ -87,8 +87,6 @@ int main(int argc, char *argv[]) {
             if (pid == 0) // Child process.
             {
                 /* USE ONLY IF THIS METHOD FAILS */
-                // int child_id = getpid() - parent_pid;
-                // NameCountData *child_region = (NameCountData *) ((char *) GLOBAL + child_id * region_size);
                 if (fcntl(mem_fd, F_SETFD, 0) == -1) {
                     // Clear FD_CLOEXEC flag
                     perror("fcntl error");
@@ -109,20 +107,22 @@ int main(int argc, char *argv[]) {
 
         /* Parent waits until all children are finished */
 
-        while (wait(NULL) > 0) {
+        while (wait(NULL) > 0) {    // Wait until all children are finished.
         }
+        // This is basically the same code to aggregate counts of all names.
+
         for (int j = 1; j < i; j++) {
-            int slot = j - 1;
+            int slot = j - 1;   // Slot is in 0-indexed position.
 
-            NameCountData *child_slot = (NameCountData *) GLOBAL + slot * MNAME;
+            NameCountData *child_slot = (NameCountData *) GLOBAL + slot * MNAME;    // Compute child slot position.
 
-            for (int k = 0; k < MNAME && child_slot[k].name[0] != '\0'; k++) {
+            for (int k = 0; k < MNAME && child_slot[k].name[0] != '\0'; k++) {  // For each file go until the max number of names are reached or there are no more names.
                 NameCountData temp = child_slot[k];
                 int index = check_in(temp.name, nused);
-                if (index == -1) {
+                if (index == -1) {  // If the name does not exist, then add an entry for it.
                     nused[nused_count++] = strdup(temp.name);
                     count[nused_count - 1] = temp.count;
-                } else {
+                } else {    // Add to existing count.
                     count[index] += temp.count;
                 }
             }

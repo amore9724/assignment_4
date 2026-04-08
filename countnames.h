@@ -12,8 +12,8 @@
 #define MAXLINE 4096    // This is the maximum amount of lines that will be read.
 #define PROGRAMNAME "countnames"    // This is the name of the program to be executed.
 #define MAXARGS 100  // Maximum number of arguments
-#define output_path "output"
-#define SHARED_MEMORY_NAME "/shared_memory_i"
+#define output_path "output"    // Name of output directory.
+#define SHARED_MEMORY_NAME "/shared_memory_i"   // Name of shared memory area. It is a macro for portability.
 
 
 typedef struct {
