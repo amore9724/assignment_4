@@ -13,6 +13,7 @@
 #define PROGRAMNAME "countnames"    // This is the name of the program to be executed.
 #define MAXARGS 100  // Maximum number of arguments
 #define output_path "output"
+#define SHARED_MEMORY_NAME "/shared_memory_i"
 
 
 typedef struct {

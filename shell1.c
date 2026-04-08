@@ -4,29 +4,40 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include "countnames.h"
-
+#include <signal.h>
 /*
 *   NOTE: A history of this code is available on a GitHub repository.
 *   This repository can be made available upon request.
 */
+void *GLOBAL = NULL;
+int mem_fd = -1;
+size_t global_size = 0;
 
+void handle_sigint(int sig) {
+    if (GLOBAL) munmap(GLOBAL, global_size);
+    if (mem_fd != -1) close(mem_fd);
+    shm_unlink("/shared_memory_i");
+    _exit(0);
+}
 
 int main(int argc, char *argv[]) {
     //raise(SIGSTOP); // Comment if unneeded, this is for debugging purposes.
+    signal(SIGINT, handle_sigint);
     mkdir("output", 0755);
     char buf[MAXLINE];
     char *args[MAXARGS];
-    int mem_fd = shm_open("/shared_memory_i", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    mem_fd = shm_open(SHARED_MEMORY_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if (mem_fd == -1) {
         perror("shm_open error");
     }
-    size_t global_size = MSIZE * sizeof(NameCountData);
+
+    global_size = MSIZE * sizeof(NameCountData);
 
     if (ftruncate(mem_fd, global_size) == -1) {
         perror("ftruncate error");
     }
 
-    void *GLOBAL = mmap(NULL, global_size, PROT_READ | PROT_WRITE,
+    GLOBAL = mmap(NULL, global_size, PROT_READ | PROT_WRITE,
                         MAP_SHARED,
                         mem_fd, 0); // Actually maps the memory in question.
 
@@ -39,12 +50,14 @@ int main(int argc, char *argv[]) {
     char *nused[MAXLINE] = {0};
     int count[MAXLINE] = {0};
     int nused_count = 0;
+
     while (fgets(buf, MAXLINE, stdin) != NULL) {
         // Read argument from stdin.
         memset(nused, 0, sizeof(nused)); /* Fills nused and count with 0s once loop restarts. */
         memset(count, 0, sizeof(count));
         memset(GLOBAL, 0, global_size);
         nused_count = 0;
+
         if (buf[strlen(buf) - 1] == '\n')
             buf[strlen(buf) - 1] = 0; /* replace newline with null */
 
@@ -54,7 +67,9 @@ int main(int argc, char *argv[]) {
             args[i++] = token;
             token = strtok(NULL, " ");
         }
+
         args[i] = NULL;
+
         if (i == 0) {
             printf("%% ");
             continue;
@@ -74,13 +89,15 @@ int main(int argc, char *argv[]) {
                 /* USE ONLY IF THIS METHOD FAILS */
                 // int child_id = getpid() - parent_pid;
                 // NameCountData *child_region = (NameCountData *) ((char *) GLOBAL + child_id * region_size);
-                if (fcntl(mem_fd, F_SETFD, 0) == -1) {  // Clear FD_CLOEXEC flag
+                if (fcntl(mem_fd, F_SETFD, 0) == -1) {
+                    // Clear FD_CLOEXEC flag
                     perror("fcntl error");
                 }
 
                 char tempbuf[25];
                 sprintf(tempbuf, "%d", j - 1);
-                char *child_argv[] = {args[0], args[j], tempbuf, NULL}; // Creates arguments to pass to execvp for child process to execute.
+                char *child_argv[] = {args[0], args[j], tempbuf, NULL};
+                // Creates arguments to pass to execvp for child process to execute.
                 execvp(child_argv[0], child_argv); // Execute countnames.c
 
                 /* The child process should not get here, if it did, then something is wrong. */
@@ -94,32 +111,35 @@ int main(int argc, char *argv[]) {
 
         while (wait(NULL) > 0) {
         }
-        NameCountData *total = GLOBAL;
         for (int j = 1; j < i; j++) {
+            int slot = j - 1;
 
-            int slot = j-1;
-            NameCountData *child_slot = (NameCountData*)GLOBAL + slot * MNAME;
+            NameCountData *child_slot = (NameCountData *) GLOBAL + slot * MNAME;
 
             for (int k = 0; k < MNAME && child_slot[k].name[0] != '\0'; k++) {
-                NameCountData temp = total[j];
+                NameCountData temp = child_slot[k];
                 int index = check_in(temp.name, nused);
                 if (index == -1) {
                     nused[nused_count++] = strdup(temp.name);
-                    count[j] = temp.count;
+                    count[nused_count - 1] = temp.count;
                 } else {
                     count[index] += temp.count;
                 }
             }
-
         }
+
         nprinter(nused, count); // Prints the names to output.
         fflush(stdout);
         fflush(stderr);
         printf("%% ");
     }
+
     for (int i = 0; nused[i] != 0; i++) {
         free(nused[i]); // Frees memory which was allocated when reading from pipe.
     }
+
     munmap(GLOBAL, global_size); // Unmaps mapped memory.
+    close(mem_fd);  // Closes memory file descriptor
+    shm_unlink(SHARED_MEMORY_NAME); // Unlinks memory on file system
     exit(0);
 }
